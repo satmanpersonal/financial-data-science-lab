@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from macrocast.data import checksum
+from macrocast.data import checksum, code_checksum
 from macrocast.evaluate import MODELS, loss_comparison, score
 
 COLORS = {
@@ -51,6 +51,7 @@ def write_report(
     comparisons.to_csv(output / "loss_comparison.csv", index=False, float_format="%.10g")
     metadata = {
         "data_sha256": checksum(raw_path),
+        "source_code_sha256": code_checksum(),
         "first_origin": str(dataset.origin.min().date()),
         "last_origin": str(dataset.origin.max().date()),
         "n_vintages": len(dataset),
@@ -65,6 +66,7 @@ def write_report(
         "label_policy": "first subsequent archived quarterly vintage containing target month",
         "seed": 42,
         "hyperparameter_selection": "fixed; no search on evaluation outcomes",
+        "research_extensions": "exploratory; see research.json and robustness.md if available",
         "packages": {
             name: version(name)
             for name in ["numpy", "pandas", "scikit-learn", "statsmodels", "matplotlib", "openpyxl"]
@@ -147,7 +149,7 @@ This is a retrospective research demonstration, not a prospectively sealed holdo
 
 ## Main comparison: {comparison_period}
 
-{markdown_table(late[["model", "n", "mae", "rmse", "bias"]])}
+{markdown_table(late[["model", "n", "mae", "rmse", "bias", "mae_skill_vs_persistence"]])}
 
 Lowest observed MAE: **{best["model"]}**, **{best.mae:.3f} percentage points**.
 This sample ranking is not evidence of durable superiority or investment profitability.
@@ -161,6 +163,8 @@ This sample ranking is not evidence of durable superiority or investment profita
 The 2020–2021 exclusion is a prespecified sensitivity view. The headline comparison
 includes these shocks. Positive bias means overprediction. MAE, RMSE, and bias are
 all in percentage points; the sample count is the number of quarterly forecast origins.
+MAE skill is dimensionless: `1 - model MAE / persistence MAE`; positive values
+favor the alternative and negative values indicate a worse forecast.
 
 ![Forecasts and cumulative error](forecast_comparison.png)
 
@@ -170,7 +174,7 @@ all in percentage points; the sample count is the number of quarterly forecast o
 
 Negative differences favor the alternative. These are pointwise 95% intervals for
 mean paired absolute-loss differences, estimated with an intercept-only OLS and
-HAC covariance (four quarterly lags, finite-sample correction, t reference).
+HAC covariance (four ordered forecast-origin lags, finite-sample correction, t reference).
 They allow local serial correlation and heteroskedasticity under asymptotic conditions;
 they do not establish stationarity or robustness to structural breaks. Small samples,
 COVID outliers, and multiple comparisons limit inference. These are exploratory,
@@ -191,10 +195,12 @@ origins: **{metadata["unknown_targets"]}**. All models share the same exclusions
 
 {markdown_table(exclusions)}
 
-The current workbook has a missing October 2025 observation. Origins whose 13-month
-feature window crosses that gap are excluded; outcomes requiring that missing month
-remain unknown. Consequently, the latest eligible forecast can precede the latest
-source vintage. Missing values are never imputed or replaced by revised future data.
+Origins with gaps in the required 13-month feature window are excluded and the
+missing months appear in the audit. Missing targets remain unknown. Consequently,
+the latest eligible forecast can precede the latest source vintage. Missing values
+are never imputed or replaced by revised future data. The dataset also exposes the
+age of the latest observed month; histories so stale that the target month has
+already begun at the forecast origin are excluded.
 
 ## Interpretation and limits
 

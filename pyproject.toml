@@ -4,10 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "macrocast-lab"
-version = "0.1.0"
+version = "0.2.0"
 description = "Vintage-aware unemployment forecasting with honest baseline comparisons"
 requires-python = ">=3.12"
-dependencies = ["numpy", "pandas", "scikit-learn", "statsmodels", "matplotlib", "openpyxl"]
+dependencies = [
+    "numpy", "pandas", "scikit-learn", "statsmodels", "matplotlib", "openpyxl", "threadpoolctl"
+]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]

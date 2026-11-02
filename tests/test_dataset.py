@@ -68,6 +68,22 @@ def test_missing_month_is_rejected_instead_of_imputed(vintages):
         features(series)
 
 
+def test_stale_history_cannot_turn_a_future_month_forecast_into_a_nowcast(vintages):
+    last_origin = max(vintages)
+    vintages[last_origin] = vintages[last_origin].iloc[:-6]
+    dataset = build_dataset(vintages)
+    assert last_origin not in set(dataset.origin)
+    assert "Target month already started" in dataset.attrs["exclusions"][0]["reason"]
+    assert (dataset.target_month > dataset.origin).all()
+
+
+def test_parser_rejects_nonnumeric_values_instead_of_silently_dropping_them(tmp_path):
+    path = tmp_path / "bad.xlsx"
+    pd.DataFrame({"DATE": ["1966:01"], "RUC66Q1": ["corrupt"]}).to_excel(path, index=False)
+    with pytest.raises(ValueError, match="Nonnumeric"):
+        load_vintages(path)
+
+
 def test_feature_gaps_are_excluded_and_audited_but_labels_still_use_raw_vintages(vintages):
     last_origin = max(vintages)
     removed_month = vintages[last_origin].index[-3]

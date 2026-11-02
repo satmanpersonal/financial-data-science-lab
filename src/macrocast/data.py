@@ -20,6 +20,15 @@ def checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def code_checksum() -> str:
+    """Fingerprint package source independently of platform line endings and Git state."""
+    digest = hashlib.sha256()
+    for path in sorted(Path(__file__).parent.glob("*.py")):
+        digest.update(path.name.encode("utf-8") + b"\0")
+        digest.update(path.read_text(encoding="utf-8").encode("utf-8") + b"\0")
+    return digest.hexdigest()
+
+
 def record_manifest(path: Path) -> None:
     manifest = {
         "source_url": SOURCE_URL,
@@ -75,6 +84,9 @@ def load_vintages(path: Path) -> dict[pd.Timestamp, pd.Series]:
     )
     dates = pd.to_datetime(month, format="%Y-%m", errors="coerce")
     valid = dates.notna()
+    nonempty_dates = raw.iloc[:, 0].notna()
+    if (nonempty_dates & ~valid).any():
+        raise ValueError("Unrecognized observation date in workbook")
     if dates[valid].duplicated().any():
         raise ValueError("Duplicate observation months")
     result = {}
@@ -83,6 +95,8 @@ def load_vintages(path: Path) -> dict[pd.Timestamp, pd.Series]:
             continue
         origin = vintage_date(str(column))
         values = pd.to_numeric(raw.loc[valid, column], errors="coerce")
+        if (raw.loc[valid, column].notna() & values.isna()).any():
+            raise ValueError(f"Nonnumeric observation in {column}")
         series = pd.Series(values.to_numpy(), index=pd.DatetimeIndex(dates[valid])).dropna()
         # Blank/sentinel entries are missing, never forward-filled.
         series = series.loc[series > -900].sort_index()

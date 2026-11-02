@@ -1,0 +1,29 @@
+{
+  "status": "exploratory extension after inspection of original fixed-model results",
+  "selector": {
+    "start": "2015-01-01",
+    "retune": "first eligible origin each calendar year",
+    "lookback_origins": 20,
+    "minimum_validation_origins": 12,
+    "tie_break_order": [
+      "persistence",
+      "ar_linear",
+      "ridge",
+      "gradient_boosting"
+    ],
+    "validation_metric": "MAE",
+    "fallback": "persistence",
+    "selection_counts": {
+      "ar_linear": 1,
+      "gradient_boosting": 6,
+      "persistence": 4
+    }
+  },
+  "rolling_window_labeled_origins": 80,
+  "regime_boundaries": [
+    "2000-01-01",
+    "2015-01-01",
+    "2020-01-01",
+    "2022-01-01"
+  ]
+}

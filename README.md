@@ -10,34 +10,39 @@ date, and each training label must already have been observable. Persistence,
 an autoregressive linear benchmark, ridge regression, and gradient boosting
 are evaluated on the same expanding-window forecast origins.
 
-**Finding:** persistence has the lowest MAE across the full evaluation and the
-2015 onward block. Added complexity does not reliably improve this benchmark.
-The report preserves this result and shows sensitivity to the COVID shock.
+**Finding:** persistence has the lowest observed MAE across the full evaluation
+and the 2015 onward block. The paired uncertainty intervals include zero, so
+the ranking does not establish a statistically decisive winner. Robustness
+experiments examine changing economic history and selecting models from past losses.
 
 ![Out-of-sample model comparison](reports/model_comparison.png)
 
+<!-- BEGIN GENERATED RESULTS -->
 ## Results at a glance
 
-Forecast horizon: three months after the latest **observation month** in a vintage.
-Metrics are percentage points. Lower MAE and RMSE are better.
+Forecast horizon: three months after the latest **observation month**, with
+the target month required to start after the forecast origin. Errors are
+percentage points; lower is better. MAE skill is dimensionless, relative to
+persistence on identical origins; positive values favor the alternative.
 
-| Model | MAE, 2000 onward | MAE, 2015 onward | RMSE, 2015 onward |
+| Model | MAE, 2000 onward | MAE, 2015 onward | MAE skill, 2015 onward |
 | --- | ---: | ---: | ---: |
-| Persistence | **0.435** | **0.649** | **1.916** |
-| Autoregressive linear | 0.493 | 0.797 | 2.264 |
-| Ridge | 0.463 | 0.745 | 2.019 |
-| Gradient boosting | 0.448 | 0.692 | 1.932 |
+| Persistence | 0.437 | 0.660 | 0.0% |
+| Autoregressive linear | 0.496 | 0.811 | -23.0% |
+| Ridge | 0.467 | 0.762 | -15.6% |
+| Gradient boosting | 0.452 | 0.707 | -7.2% |
 
-There are 103 scored quarterly forecast origins from 2000 onward, including 43
-from 2015 onward. The source workbook contains 244 vintages through August 2026;
-three 2026 origins have incomplete feature histories and are explicitly excluded.
-The October 2025 target is missing in the source and remains unscored. The latest
-eligible forecast origin is November 2025. This is a historical research benchmark,
-not a current forecast service.
+There are **102 scored origins** from 2000 onward, including **42** from 2015 onward.
+The workbook contains 244 vintages through 2026-08-15; 4 origins are excluded for incomplete or stale feature history.
+Unknown targets among eligible origins: **1**. The latest eligible origin is **2025-08-15**.
 
-Read the [full research report](reports/results.md) for all periods, bias,
-shock sensitivity, and dependence-aware uncertainty in paired loss differences.
-The sample ranking does not establish durable predictive superiority.
+This is a historical benchmark, not a current forecast service. Missing targets
+are not silently scored or imputed. See the [exclusion audit](reports/excluded_origins.csv).
+
+Read the [primary report](reports/results.md) and [robustness experiments](reports/robustness.md) for uncertainty, window sensitivity,
+annual past-loss model selection, and error concentration. Sample rankings
+do not establish durable predictive superiority.
+<!-- END GENERATED RESULTS -->
 
 ## What the project demonstrates
 
@@ -48,9 +53,17 @@ The sample ranking does not establish durable predictive superiority.
 - **Model comparison:** simple baselines alongside regularized linear and nonlinear
   models, with preprocessing fitted only on available training observations.
 - **Statistical judgment:** common evaluation samples, MAE/RMSE/bias, explicit shock
-  sensitivity, and exploratory HAC intervals with their assumptions documented.
+  sensitivity, error concentration, and exploratory HAC intervals with their assumptions documented.
+- **Model selection:** an annual past-loss selector with candidate-level availability
+  audits, plus an 80-origin rolling estimation comparison. Both are labeled exploratory.
 - **Engineering discipline:** packaged CLI, locked environment, regression tests,
   automated numerical reproduction, and GitHub Actions.
+
+For a short explanation of the research decision and inspectable evidence, read the
+[research brief](docs/research-brief.md). The [review log](docs/review.md) records
+the weaknesses found, changes made, and remaining limits.
+
+![Training-window sensitivity and sequential model selection](reports/research_diagnostics.png)
 
 ## Reproduce locally
 
@@ -99,6 +112,7 @@ To verify numerical reproduction without replacing the committed report:
 ```console
 macrocast run --output reproduced-reports
 python scripts/check_reproduction.py reports reproduced-reports
+python scripts/update_readme.py --check
 ruff check .
 ruff format --check .
 ```
@@ -117,6 +131,10 @@ CI performs the same checks on Linux. Numeric results are compared with
 | [`reports/predictions.csv`](reports/predictions.csv) | Forecast-level results and training audit fields |
 | [`reports/excluded_origins.csv`](reports/excluded_origins.csv) | Missing-feature exclusions |
 | [`reports/run.json`](reports/run.json) | Environment, snapshot hash, configuration |
+| [`reports/robustness.md`](reports/robustness.md) | Rolling estimation, sequential selection, error attribution |
+| [`reports/selection_audit.csv`](reports/selection_audit.csv) | Candidate scores and label-availability dates at each annual selection |
+| [`docs/research-brief.md`](docs/research-brief.md) | Decision context and questions a reviewer can investigate |
+| [`docs/review.md`](docs/review.md) | Review findings, resolutions, and evidence limits |
 | [`docs/methodology.md`](docs/methodology.md) | Research design and limitations |
 | [`docs/data.md`](docs/data.md) | Source documentation and update policy |
 | [`tests/`](tests) | Leakage, availability, parser, metrics, and report checks |
@@ -131,9 +149,9 @@ limit statistical inference. The 2015 onward block is retrospective, not a
 prospectively sealed holdout.
 
 Useful next experiments are adding release-timed employment and yield-curve
-vintages, comparing rolling and expanding estimation, and preregistering a
-hyperparameter-selection protocol. Any extension should preserve the information
-clock and keep the simple baseline visible.
+vintages and preregistering a hyperparameter-selection protocol. The current
+annual selector chooses among fixed candidates; it does not tune their parameters.
+Any extension should preserve the information clock and keep the simple baseline visible.
 
 This is independent educational research with no BlackRock or Federal Reserve
 affiliation. It models an economic indicator and makes no investment-return claims.

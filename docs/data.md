@@ -25,6 +25,7 @@ source data. Source materials remain subject to their publisher's terms.
 ```console
 macrocast fetch --refresh
 macrocast run
+python scripts/update_readme.py
 ```
 
 Refresh explicitly replaces the workbook and its provenance manifest. Review
@@ -41,6 +42,10 @@ change historical results. Ordinary `macrocast run` never downloads data.
   observations cause validation failure. Feature-history gaps exclude the affected
   origins, with an explicit audit in `reports/excluded_origins.csv`.
 - The committed workbook lacks October 2025. This excludes three 2026 feature
-  origins and leaves a forecast targeting October 2025 unscored. The report shows
-  the most recent eligible historical origin rather than inventing a current forecast.
+  origins and leaves a forecast targeting October 2025 unscored. November 2025's
+  last observation is August: its implied November target had already started,
+  so that origin is also excluded to keep future-month forecasts separate from
+  nowcasts. The latest eligible origin is August 2025. Its target is unknown.
+  The report shows the most recent eligible historical origin rather than
+  inventing a current forecast.
 - This is a single-country, single-indicator benchmark with a modest sample.

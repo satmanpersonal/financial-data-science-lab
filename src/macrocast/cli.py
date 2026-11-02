@@ -10,6 +10,7 @@ from macrocast.data import checksum, download, load_vintages
 from macrocast.dataset import build_dataset
 from macrocast.evaluate import walk_forward
 from macrocast.report import write_report
+from macrocast.research import write_research
 
 
 def main() -> None:
@@ -29,7 +30,7 @@ def main() -> None:
         return
     manifest = args.raw.with_suffix(".manifest.json")
     if not manifest.exists():
-        raise ValueError("Missing provenance manifest: use 'macrocast fetch' for a new snapshot")
+        raise ValueError("Missing provenance manifest: use 'macrocast fetch --refresh'")
     if checksum(args.raw) != json.loads(manifest.read_text())["sha256"]:
         raise ValueError("Snapshot checksum differs from provenance manifest")
     vintages = load_vintages(args.raw)
@@ -41,6 +42,7 @@ def main() -> None:
     dataset = build_dataset(vintages)
     predictions = walk_forward(dataset)
     write_report(dataset, predictions, args.raw, args.output)
+    write_research(dataset, predictions, args.output)
     print(f"Evaluated {predictions.origin.nunique()} origins; report: {args.output / 'results.md'}")
 
 

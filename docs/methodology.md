@@ -15,6 +15,8 @@ not an asset return. This project does not test an investment strategy.
    replace older observations with today's revised values.
 3. Let `t` be the last observation month in that vintage. Forecast the level at
    `t + 3 months`. Usually a February vintage ends in January and predicts April.
+   Require the target month to start strictly after the origin. Stale histories
+   that would imply a nowcast or backcast are excluded and audited.
 4. The target is the value in the **first subsequent archived quarterly vintage**
    containing that target month. The label-availability date is that vintage's date.
    It is not assumed to be the original BLS release value or release date.
@@ -22,7 +24,8 @@ not an asset return. This project does not test an investment strategy.
    A label first appearing in the current snapshot may be used at that origin.
 
 This approximates end-of-snapshot-date information, not intraday publication.
-Late publication or source reconstruction errors are not modeled. Three months
+Export `data_age_months` to make unusual publication lags visible. Late publication
+or source reconstruction errors are not modeled. Three months
 is the observation horizon, not three months after the forecast's calendar date.
 The typical January-to-April example predicts April's rate from February 15;
 that rate is usually released in May.
@@ -60,10 +63,14 @@ Hyperparameters are fixed and no evaluation-driven tuning is performed.
   These are retrospective evaluation blocks, not a sealed prospective holdout.
 - Same origins and target vintages for all models; unknown outcomes remain NaN.
 - Primary metric: MAE in percentage points. Also report RMSE and signed bias.
+- MAE skill is `1 - model MAE / persistence MAE` on identical scored origins.
+  Positive values improve on persistence; a zero-error baseline makes skill undefined.
+- Reject duplicate forecasts, inconsistent targets, unequal model coverage,
+  nonfinite predictions, and training labels dated after the forecast origin.
 - Report 2020–2021 exclusion only as a named sensitivity; include shocks in
   the main results. This specification was chosen before running the comparison.
 - Compare paired absolute-loss differences against persistence using an
-  intercept-only statsmodels OLS with HAC covariance, four quarterly lags,
+  intercept-only statsmodels OLS with HAC covariance, four ordered forecast-origin lags,
   small-sample correction, and t-based pointwise 95% confidence intervals.
 
 The inference assumes sufficient weak dependence and finite moments. Structural
@@ -75,12 +82,36 @@ Do not interpret a favorable mean or interval as proof of a profitable strategy.
 
 `reports/dataset.csv` exposes every feature row and label-availability date.
 `reports/predictions.csv` includes each origin's training count and maximum
-training-label date. `reports/run.json` records package versions and data hash.
+training-label date. `reports/run.json` records package versions, the data hash,
+and a package-source hash normalized across platform line endings.
 Tests mutate future vintages and verify earlier predictions remain unchanged.
 
+## Exploratory extensions after the initial results
+
+The fixed settings above are unchanged. The following analyses were designed after
+the first results were inspected; none creates a new confirmatory holdout.
+
+- **Rolling estimation:** retain the most recent 80 observable labeled origins
+  at every forecast date. Compare on the exact primary evaluation sample.
+- **Sequential model selection:** from 2015 onward, choose among the four fixed
+  candidates at the first eligible origin of each calendar year. Use MAE on the
+  latest 20 prior out-of-sample forecast origins with labels known by that selection
+  date. Require 12 validation origins; otherwise use persistence. Break exact ties
+  in declared model order, persistence first. Freeze the choice until the next
+  calendar year; each underlying model continues its normal refitting.
+- **Error diagnostics:** decompose absolute and squared error by origin; report
+  calendar blocks 2000–2014, 2015–2019, 2020–2021, and 2022 onward. These are
+  descriptive blocks, not hindsight-defined switches in the forecasting algorithm.
+
+The selector is a prequential model-selection experiment, not nested parameter
+tuning. Its candidate predictions were each generated with past-only training,
+and its own scoring window uses only matured past targets. An audit records the
+latest validation origin and label date. Researcher-level adaptation remains,
+so no additional significance claim is attached to the selector's result.
+
 Possible extensions include carefully timed employment or yield-curve vintages,
-rolling-window sensitivity, a preregistered tuning protocol, and calibrated
-forecast intervals. Each should preserve the same information clock.
+a preregistered tuning protocol, and calibrated forecast intervals. Each should
+preserve the same information clock.
 
 ## Implementation references
 

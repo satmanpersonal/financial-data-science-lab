@@ -1,11 +1,12 @@
 {
   "data_sha256": "d971e59d3ed5f1322a46631743508fb1ad5eee39bfbe12425a641a277fdd9b9a",
+  "source_code_sha256": "dcdb7f9a422661fd713924aef64ac46d5e3e296f95be0506dca4a46d7b970da2",
   "first_origin": "1965-11-15",
-  "last_origin": "2025-11-15",
-  "n_vintages": 241,
+  "last_origin": "2025-08-15",
+  "n_vintages": 240,
   "source_vintages": 244,
   "latest_source_vintage": "2026-08-15",
-  "excluded_origins": 3,
+  "excluded_origins": 4,
   "unknown_targets": 1,
   "evaluation_start": "2000-01-01",
   "late_evaluation_start": "2015-01-01",
@@ -14,6 +15,7 @@
   "label_policy": "first subsequent archived quarterly vintage containing target month",
   "seed": 42,
   "hyperparameter_selection": "fixed; no search on evaluation outcomes",
+  "research_extensions": "exploratory; see research.json and robustness.md if available",
   "packages": {
     "numpy": "2.5.4",
     "pandas": "3.1.0",

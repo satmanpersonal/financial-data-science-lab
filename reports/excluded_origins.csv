@@ -1,4 +1,5 @@
 origin,reason
-2026-02-15,Need 13 consecutive observed months; no imputation is allowed
-2026-05-15,Need 13 consecutive observed months; no imputation is allowed
-2026-08-15,Need 13 consecutive observed months; no imputation is allowed
+2025-11-15,Target month already started; latest observation: 2025-08
+2026-02-15,Need 13 consecutive observed months; missing: 2025-10
+2026-05-15,Need 13 consecutive observed months; missing: 2025-10
+2026-08-15,Need 13 consecutive observed months; missing: 2025-10

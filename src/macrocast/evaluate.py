@@ -14,6 +14,38 @@ from macrocast.dataset import FEATURES, training_rows
 MODELS = ["persistence", "ar_linear", "ridge", "gradient_boosting"]
 
 
+def validate_predictions(predictions: pd.DataFrame) -> None:
+    """Fail closed if model comparisons would use different samples or outcomes."""
+    required = {"origin", "model", "actual", "prediction"}
+    if not required.issubset(predictions.columns) or predictions.empty:
+        raise ValueError("Predictions require nonempty origin/model/actual/prediction columns")
+    if predictions[["origin", "model"]].isna().any().any():
+        raise ValueError("Origin and model identifiers cannot be missing")
+    if predictions.duplicated(["origin", "model"]).any():
+        raise ValueError("Duplicate model/origin predictions")
+    if set(predictions.model) != set(MODELS):
+        raise ValueError("Prediction models do not match the declared comparison")
+    if not predictions.groupby("origin").model.nunique().eq(len(MODELS)).all():
+        raise ValueError("Every model must cover identical forecast origins")
+    if not np.isfinite(predictions.prediction).all():
+        raise ValueError("Nonfinite forecast")
+    if np.isinf(predictions.actual).any():
+        raise ValueError("Infinite realized outcome")
+    if predictions.groupby("origin").actual.nunique(dropna=False).gt(1).any():
+        raise ValueError("Models disagree on realized outcomes or missing-label status")
+    for field in ["target_month", "label_available", "last_observation"]:
+        if (
+            field in predictions
+            and predictions.groupby("origin")[field].nunique(dropna=False).gt(1).any()
+        ):
+            raise ValueError(f"Models disagree on {field}")
+    if (
+        "max_training_label_date" in predictions
+        and (predictions.max_training_label_date > predictions.origin).any()
+    ):
+        raise ValueError("Training includes a label unavailable at the forecast origin")
+
+
 def predict(train: pd.DataFrame, row: pd.DataFrame) -> dict[str, float]:
     """Predict level changes for stable linear baselines; add today's level back."""
     y = train.target - train.level
@@ -44,10 +76,16 @@ def predict(train: pd.DataFrame, row: pd.DataFrame) -> dict[str, float]:
     }
 
 
-def walk_forward(dataset: pd.DataFrame, start: str = "2000-01-01") -> pd.DataFrame:
+def walk_forward(
+    dataset: pd.DataFrame, start: str = "2000-01-01", window: int | None = None
+) -> pd.DataFrame:
+    if window is not None and window < 80:
+        raise ValueError("Rolling windows require at least 80 labeled origins")
     results = []
     for index, point in dataset.loc[dataset.origin >= pd.Timestamp(start)].iterrows():
         train = training_rows(dataset, point.origin)
+        if window is not None:
+            train = train.sort_values("origin").tail(window)
         if len(train) < 80:
             continue
         predictions = predict(train, dataset.loc[[index]])
@@ -71,6 +109,7 @@ def walk_forward(dataset: pd.DataFrame, start: str = "2000-01-01") -> pd.DataFra
 
 
 def score(predictions: pd.DataFrame) -> pd.DataFrame:
+    validate_predictions(predictions)
     observed = predictions.dropna(subset=["actual"]).copy()
     observed["error"] = observed.prediction - observed.actual
     observed["period"] = np.where(
@@ -86,6 +125,7 @@ def score(predictions: pd.DataFrame) -> pd.DataFrame:
     )
     rows = []
     for period, block in groups:
+        baseline = block.loc[block.model == "persistence", "error"].abs().mean()
         for model, subset in block.groupby("model"):
             rows.append(
                 {
@@ -95,6 +135,9 @@ def score(predictions: pd.DataFrame) -> pd.DataFrame:
                     "mae": float(subset.error.abs().mean()),
                     "rmse": float(np.sqrt((subset.error**2).mean())),
                     "bias": float(subset.error.mean()),
+                    "mae_skill_vs_persistence": (
+                        float(1 - subset.error.abs().mean() / baseline) if baseline > 0 else np.nan
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -102,6 +145,7 @@ def score(predictions: pd.DataFrame) -> pd.DataFrame:
 
 def loss_comparison(predictions: pd.DataFrame) -> pd.DataFrame:
     """Pointwise HAC intervals, not an independence-based significance test."""
+    validate_predictions(predictions)
     observed = predictions.dropna(subset=["actual"]).copy()
     observed["loss"] = (observed.prediction - observed.actual).abs()
     rows = []

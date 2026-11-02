@@ -11,7 +11,10 @@ def features(series: pd.Series) -> dict[str, float]:
     expected = pd.date_range(last - pd.DateOffset(months=12), last, freq="MS")
     window = series.reindex(expected)
     if window.isna().any():
-        raise ValueError("Need 13 consecutive observed months; no imputation is allowed")
+        missing = ", ".join(window.index[window.isna()].strftime("%Y-%m"))
+        raise ValueError(f"Need 13 consecutive observed months; missing: {missing}")
+    if not np.isfinite(window).all():
+        raise ValueError("Nonfinite values in feature history")
     level = float(window.iloc[-1])
     return {
         "level": level,
@@ -30,6 +33,15 @@ def build_dataset(vintages: dict[pd.Timestamp, pd.Series]) -> pd.DataFrame:
     exclusions = []
     for origin, series in sorted(vintages.items()):
         latest = series.index.max()
+        target_month = latest + pd.DateOffset(months=3)
+        if target_month <= origin:
+            exclusions.append(
+                {
+                    "origin": str(origin.date()),
+                    "reason": f"Target month already started; latest observation: {latest:%Y-%m}",
+                }
+            )
+            continue
         try:
             feature_values = features(series)
         except ValueError as error:
@@ -38,7 +50,8 @@ def build_dataset(vintages: dict[pd.Timestamp, pd.Series]) -> pd.DataFrame:
         row = {
             "origin": origin,
             "last_observation": latest,
-            "target_month": latest + pd.DateOffset(months=3),
+            "target_month": target_month,
+            "data_age_months": (origin.year - latest.year) * 12 + origin.month - latest.month,
             **feature_values,
             "target": np.nan,
             "label_available": pd.NaT,
