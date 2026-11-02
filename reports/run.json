@@ -1,0 +1,25 @@
+{
+  "data_sha256": "d971e59d3ed5f1322a46631743508fb1ad5eee39bfbe12425a641a277fdd9b9a",
+  "first_origin": "1965-11-15",
+  "last_origin": "2025-11-15",
+  "n_vintages": 241,
+  "source_vintages": 244,
+  "latest_source_vintage": "2026-08-15",
+  "excluded_origins": 3,
+  "unknown_targets": 1,
+  "evaluation_start": "2000-01-01",
+  "late_evaluation_start": "2015-01-01",
+  "minimum_training_rows": 80,
+  "forecast_observation_horizon_months": 3,
+  "label_policy": "first subsequent archived quarterly vintage containing target month",
+  "seed": 42,
+  "hyperparameter_selection": "fixed; no search on evaluation outcomes",
+  "packages": {
+    "numpy": "2.5.4",
+    "pandas": "3.1.0",
+    "scikit-learn": "1.9.1",
+    "statsmodels": "0.15.0",
+    "matplotlib": "3.11.2",
+    "openpyxl": "3.1.5"
+  }
+}

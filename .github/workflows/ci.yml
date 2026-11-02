@@ -1,0 +1,44 @@
+name: Research checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MPLBACKEND: Agg
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install locked environment
+        run: |
+          python -m pip install -r requirements.lock
+          python -m pip install --no-deps -e .
+          python -m pip check
+      - name: Lint and format
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Leakage, metrics, and report tests
+        run: pytest -q
+      - name: Reproduce committed snapshot evaluation
+        run: macrocast run --output ci-reports
+      - name: Verify numerical reproduction
+        run: python scripts/check_reproduction.py reports ci-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reproduced-research-report
+          path: ci-reports/
